@@ -5,64 +5,35 @@ export function getTemplate(option, params = {}) {
     hora = ''
   } = params;
 
-  switch (option) {
-    case 'cita_gratis':
-      return `¡Hola 👋
+    return `✨ ¡Hola ${nombre}! ✨
+Sabemos que aprender sobre lo digital es la clave para que tu proyecto sea único y llamativo 💡🌐.
 
-✅ Tu primera cita GRATUITA ha sido confirmada:
+En DigiMedia desarrollamos estrategias innovadoras y auténticas que conectan con jóvenes como tú 🙌🎯.
 
-📅 Fecha: ${fecha}
-🕐 Hora: ${hora}
-👨‍⚕️ Psicólogo: ${nombre}
+📱 Desde la gestión de tus redes hasta campañas que realmente venden 💰🔥, queremos llevar tu marca al siguiente nivel 🚀.
 
-🎉 ¡Recuerda que tu primera consulta es completamente GRATIS!
+¿Quieres que te muestre cómo lograr que tus ideas brillen en internet? 🌟💻
+ 👉 Escríbeme y lo hacemos realidad juntos. 🤝✨`;
 
-Si tienes alguna consulta, no dudes en contactarnos.
+//   switch (option) {
+//     case 'cita_gratis':
+//       return `¡Hola 👋
 
-¡Te esperamos! 🌟`;
+// ✅ Tu primera cita GRATUITA ha sido confirmada:
 
-    case 'cita_pagada':
-      return `¡Hola 👋
+// 📅 Fecha: ${fecha}
+// 🕐 Hora: ${hora}
+// 👨‍⚕️ Psicólogo: ${nombre}
 
-✅ Tu cita ha sido confirmada:
+// 🎉 ¡Recuerda que tu primera consulta es completamente GRATIS!
 
-📅 Fecha: ${fecha}
-🕐 Hora: ${hora}
-👨‍⚕️ Psicólogo: ${nombre}
+// Si tienes alguna consulta, no dudes en contactarnos.
 
-Por favor, realiza el pago antes de la consulta para confirmar tu reserva.
+// ¡Te esperamos! 🌟`;
 
-Si tienes dudas, contáctanos.
-
-¡Gracias por confiar en nosotros!`;
-
-    case 'recordatorio_cita':
-      return `¡Hola 👋
-
-⏰ Te recordamos tu cita próxima:
-
-📅 Fecha: ${fecha}
-🕐 Hora: ${hora}
-👨‍⚕️ Psicólogo: ${nombre}
-
-Por favor, confirma tu asistencia respondiendo a este mensaje.
-
-¡Nos vemos pronto!`;
-
-    case 'confirmacion_asistencia':
-      return `¡Hola 👋
-
-✅ Hemos recibido tu confirmación de asistencia para la cita:
-
-📅 Fecha: ${fecha}
-🕐 Hora: ${hora}
-👨‍⚕️ Psicólogo: ${nombre}
-
-¡Gracias por avisarnos!`;
-
-    default:
-      return 'Opción de plantilla no válida.';
-  }
+//     default:
+//       return 'Opción de plantilla no válida.';
+//   }
 }
 
 // Template para mensaje de pago aceptado
