@@ -1,9 +1,11 @@
 import { makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
-import { getTemplate } from '../templates.js';
+import { getTemplate, getTemplateMessage } from '../templates.js';
 import logger from '../utils/logger.js';
 import { emitQrStatusUpdate } from '../app.js';
 import { getWhatsAppConfig } from '../config/whatsapp.config.js';
+import { chatbotFlow } from '../chatbot/chatbotFlow.js';
+
 
 // Manejo de errores global para evitar que el proceso se cierre
 process.on('uncaughtException', (error) => {
@@ -40,8 +42,216 @@ const connectionState = {
   maxReconnectAttempts: 5,
   reconnectTimer: null,
   isReconnecting: false,
-  lastConnectionAttempt: 0
+  lastConnectionAttempt: 0,
+
+  conversations: new Map(), // key: userId, value: { step: number, context: any }
 };
+
+//funcion llegada mensaje whatsapp
+// function handleIncomingMessage(userId, message) {
+//   const conv = connectionState.conversations.get(userId) || { step: "start" };
+//   const currentStep = chatbotFlow[conv.step];
+//   const option = message.trim();
+
+//   if (currentStep.next[option]) {
+//     const nextStep = currentStep.next[option];
+//     connectionState.conversations.set(userId, { step: nextStep });
+//     return chatbotFlow[nextStep].message;
+//     // return chatbotFlow[nextStep];
+
+//   }
+
+//   return `❌ Opción no válida.\n\n${currentStep.message}`;
+//     // return { message: `❌ Opción no válida.\n\n${currentStep.message}` };
+// }
+
+
+// function handleIncomingMessage(userId, message) {
+//   let conv = connectionState.conversations.get(userId);
+
+//   const now = Date.now();
+//   if (!conv) {
+//     conv = { step: "start", lastInteraction: now,timeout: null };
+//   }
+//     if (conv.timeout) {
+//     clearTimeout(conv.timeout);
+//   }
+//   conv.timeout = setTimeout(() => {
+//     connectionState.socket.sendMessage(userId, {
+//       text: "⌛ Como no interactuaste en el último minuto, voy a cerrar esta conversación.\n\n¡Hasta luego! 👋"
+//     });
+//     connectionState.conversations.delete(userId); // limpiamos la sesión
+//   }, 60 * 1000);
+
+//   conv.lastInteraction = now;
+
+//   const currentStep = chatbotFlow[conv.step];
+//   const option = message.trim();
+
+//   if (currentStep.next[option]) {
+//     const nextStep = currentStep.next[option];
+//     connectionState.conversations.set(userId, { step: nextStep, ...conv  });
+//     return chatbotFlow[nextStep].message;
+
+//   }
+//   connectionState.conversations.set(userId, conv);
+
+//   return `❌ Opción no válida.\n\n${currentStep.message}`;
+//     // return { message: `❌ Opción no válida.\n\n${currentStep.message}` };
+// }
+
+
+
+
+
+
+
+function handleIncomingMessage(userId, message) {
+  const conv = connectionState.conversations.get(userId) || { step: "start" };
+  const currentStep = chatbotFlow[conv.step];
+  const option = message.trim().toLowerCase();
+
+    if (conv.step === "start") {
+    connectionState.conversations.set(userId, { step: "start" });
+    return chatbotFlow.start;
+  }
+
+  if (currentStep.next[option]) {
+    const nextStep = currentStep.next[option];
+    connectionState.conversations.set(userId, { step: nextStep });
+    return chatbotFlow[nextStep];
+  }
+
+  // ❌ Caso inválido
+  return {
+    message: `❌ Opción no válida.\n\n${currentStep.message}`,
+    buttons: currentStep.buttons || null
+  };
+}
+
+
+
+export async function startWhatsAppBot() {
+  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+
+  
+
+  const sock = makeWASocket({
+    printQRInTerminal: true,
+    auth: state,
+  });
+
+  sock.ev.on('connection.update', (update) => {
+  const { connection, lastDisconnect } = update;
+  console.log("📡 Estado de conexión:", connection);
+
+  if (connection === 'open') {
+    console.log("✅ Bot conectado correctamente a WhatsApp");
+  } else if (connection === 'close') {
+    console.log("❌ Se cerró la conexión:", lastDisconnect?.error);
+  }
+});
+
+  connectionState.socket = sock;
+
+  // 🔹 Ahora sí registramos los eventos
+  // sock.ev.on('messages.upsert', async ({ messages }) => {
+  //   const msg = messages[0];
+  //   if (!msg.message?.conversation) return;
+
+  //   const userId = msg.key.remoteJid;
+  //   const text = msg.message.conversation;
+
+  //   const response = handleIncomingMessage(userId, text);
+
+  //   if (response) {
+  //     await sock.sendMessage(userId, { text: response });
+  //   }
+  // });
+
+sock.ev.on('messages.upsert', async ({ messages, type }) => {
+  console.log("🔥 Evento messages.upsert detectado:", type, messages?.length);
+
+  const msg = messages[0];
+  console.log("msg",msg)
+  if (!msg) {
+    console.log("⚠️ No hay mensaje en el evento");
+    return;
+  }
+
+  if (!msg.message) {
+    console.log("⚠️ msg.message está vacío:", msg);
+    return;
+  }
+
+  if (msg.key.fromMe) {
+    console.log("🙅 Ignorando mensaje enviado por el bot");
+    return;
+  }
+
+  console.log("📩 Raw msg.message:", JSON.stringify(msg.message, null, 2));
+
+  const userId = msg.key.remoteJid;
+
+  let text =
+    msg.message.conversation ||
+    msg.message.extendedTextMessage?.text ||
+    msg.message.buttonsResponseMessage?.selectedButtonId ||
+    msg.message.listResponseMessage?.singleSelectReply?.selectedRowId;
+
+  console.log("👉 Texto detectado:", text);
+
+  if (!text) {
+    console.log("⚠️ No se pudo extraer texto del mensaje");
+    return;
+  }
+
+  // 👇 Aquí procesamos la respuesta del chatbot
+  const response = handleIncomingMessage(userId, text);
+  console.log("resp");
+  console.log(response)
+  // if (response.buttons) {
+  //   // Enviar botones
+  // // await sock.sendMessage(userId, {
+  // //   buttons: response.buttons,
+  // //   text: response.message,
+  // //   footer: "Selecciona una opción 👇",
+  // //   headerType: 1
+  // // }, { quoted: msg });
+  //   await sock.sendMessage(userId, {
+  //   text: response.message,
+  //   footer: "Selecciona una opción 👇",
+  //   template: {
+  //     hydratedTemplate: {
+  //       hydratedButtons: response.hydratedButtons
+  //     }
+  //   }
+  // }, { quoted: msg });
+
+if (response.buttons) {
+  // Enviar botones interactivos correctamente
+  await sock.sendMessage(userId, {
+    buttons: response.buttons,
+    text: response.message,
+    footer: "Selecciona una opción 👇",
+    headerType: 1
+  }, { quoted: msg });
+
+} else {
+    // Enviar texto plano
+   await sock.sendMessage(userId, { text: response.message }, { quoted: msg });
+  }
+});
+
+
+
+
+
+  sock.ev.on('creds.update', saveCreds);
+
+  logger.info("✅ WhatsApp Bot iniciado y escuchando mensajes...");
+}
+
 
 // Función para limpiar completamente el estado
 async function cleanupConnection() {
@@ -596,46 +806,48 @@ export default {
     return getQRStatus();
   },
 
-  async sendMessage({ telefono, templateOption, nombre, fecha, hora }) {
+ async sendMessage({ telefono, templateOption, nombre, fecha, hora }) {
     if (!connectionState.socket?.user) {
-      throw new Error('No conectado a WhatsApp. Por favor, escanea el código QR primero.');
+      throw new Error("No conectado a WhatsApp. Por favor, escanea el código QR primero.");
     }
 
-    const cleanPhone = telefono.replace(/\D/g, '');
+    const cleanPhone = telefono.replace(/\D/g, "");
     if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-      throw new Error('El número de teléfono debe tener entre 10 y 15 dígitos');
+      throw new Error("El número de teléfono debe tener entre 10 y 15 dígitos");
     }
 
     const formattedPhone = `${cleanPhone}@s.whatsapp.net`;
 
-    const messageText = getTemplate(templateOption, {
-      nombre,
-      fecha,
-      hora
-    });
+    // 🔹 Obtiene la plantilla (objeto con text + image)
+    const plantilla = getTemplate(templateOption, { nombre, fecha, hora });
 
-    if (!messageText) {
-      throw new Error('Plantilla de mensaje no válida');
+    if (!plantilla || !plantilla.text) {
+      throw new Error("Plantilla de mensaje no válida");
     }
 
     try {
-      logger.info('Enviando mensaje WhatsApp', {
+      logger.info("Enviando mensaje WhatsApp", {
         telefono: formattedPhone,
         template: templateOption,
         nombre,
         fecha,
         hora,
-        messageLength: messageText.length
+        messageLength: plantilla.text.length,
       });
 
-      const result = await this.sendMessageWithRetry(formattedPhone, messageText);
+      const messagePayload = plantilla.image
+        ? { image: { url: plantilla.image }, caption: plantilla.text }
+        : { text: plantilla.text };
 
-      logger.info('Mensaje enviado exitosamente', {
+      const result = await connectionState.socket.sendMessage(formattedPhone, messagePayload);
+
+      logger.info("Mensaje enviado exitosamente", {
         telefono: formattedPhone,
         messageId: result.key.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
+      // Guarda historial
       const sentMessage = {
         telefono: formattedPhone,
         template: templateOption,
@@ -644,15 +856,19 @@ export default {
         hora,
         messageId: result.key.id,
         sentAt: new Date().toISOString(),
-        messagePreview: messageText.substring(0, 100) + (messageText.length > 100 ? '...' : ''),
-        status: 'sent'
+        messagePreview:
+          plantilla.text.substring(0, 100) +
+          (plantilla.text.length > 100 ? "..." : ""),
+        status: "sent",
       };
 
       connectionState.sentMessages.push(sentMessage);
 
       const config = getWhatsAppConfig();
       if (connectionState.sentMessages.length > (config.messages?.maxHistorySize || 100)) {
-        connectionState.sentMessages = connectionState.sentMessages.slice(-(config.messages?.maxHistorySize || 100));
+        connectionState.sentMessages = connectionState.sentMessages.slice(
+          -(config.messages?.maxHistorySize || 100)
+        );
       }
 
       return {
@@ -661,37 +877,141 @@ export default {
         telefono: formattedPhone,
         template: templateOption,
         sentAt: new Date().toISOString(),
-        messagePreview: messageText.substring(0, 100) + (messageText.length > 100 ? '...' : '')
+        messagePreview: sentMessage.messagePreview,
       };
-
     } catch (error) {
-      logger.error('Error enviando mensaje WhatsApp', {
+      logger.error("Error enviando mensaje WhatsApp", {
         telefono: formattedPhone,
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
 
-      if (error.message.includes('disconnected')) {
+      if (error.message.includes("disconnected")) {
         await cleanupConnection();
-        throw new Error('Conexión perdida con WhatsApp. Por favor, escanea el código QR nuevamente.');
+        throw new Error("Conexión perdida con WhatsApp. Por favor, escanea el código QR nuevamente.");
       }
 
-      if (error.message.includes('not-authorized')) {
-        throw new Error('No tienes autorización para enviar mensajes a este número.');
+      if (error.message.includes("not-authorized")) {
+        throw new Error("No tienes autorización para enviar mensajes a este número.");
       }
 
-      if (error.message.includes('forbidden')) {
-        throw new Error('No se puede enviar mensajes a este número. Verifica que el número sea válido.');
+      if (error.message.includes("forbidden")) {
+        throw new Error("No se puede enviar mensajes a este número. Verifica que el número sea válido.");
       }
 
-      if (error.message.includes('rate limit')) {
-        throw new Error('Límite de mensajes alcanzado. Espera un momento antes de enviar más mensajes.');
+      if (error.message.includes("rate limit")) {
+        throw new Error("Límite de mensajes alcanzado. Espera un momento antes de enviar más mensajes.");
       }
 
       throw new Error(`Error al enviar mensaje: ${error.message}`);
     }
-  },
+ },
 
+
+  async sendMessageImageDashboard({ telefono, templateOption, nombre, fecha, hora, image }) {
+    if (!connectionState.socket?.user) {
+      throw new Error("No conectado a WhatsApp. Por favor, escanea el código QR primero.");
+    }
+      console.log('imagedash',image)
+
+    const cleanPhone = telefono.replace(/\D/g, "");
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      throw new Error("El número de teléfono debe tener entre 10 y 15 dígitos");
+    }
+
+    const formattedPhone = `${cleanPhone}@s.whatsapp.net`;
+
+    // 🔹 Obtiene la plantilla (objeto con text + image)
+    const plantilla = getTemplateMessage(templateOption, { nombre, fecha, hora,image });
+
+    if (!plantilla || !plantilla.text) {
+      throw new Error("Plantilla de mensaje no válida");
+    }
+
+    try {
+      logger.info("Enviando mensaje WhatsApp", {
+        telefono: formattedPhone,
+        template: templateOption,
+        nombre,
+        fecha,
+        hora,
+         image: plantilla.image,
+      });
+
+    const messagePayload = {
+      image: { url: plantilla.image },
+      caption: plantilla.text
+    };
+
+      const result = await connectionState.socket.sendMessage(formattedPhone, messagePayload);
+
+      // logger.info("Mensaje enviado exitosamente", {
+      //   telefono: formattedPhone,
+      //   messageId: result.key.id,
+      //   timestamp: new Date().toISOString(),
+      // });
+
+      // // Guarda historial
+      // const sentMessage = {
+      //   telefono: formattedPhone,
+      //   template: templateOption,
+      //   nombre,
+      //   fecha,
+      //   hora,
+      //   messageId: result.key.id,
+      //   sentAt: new Date().toISOString(),
+      //   messagePreview:
+      //     plantilla.text.substring(0, 100) +
+      //     (plantilla.text.length > 100 ? "..." : ""),
+      //   status: "sent",
+      // };
+
+      // connectionState.sentMessages.push(sentMessage);
+
+      // const config = getWhatsAppConfig();
+      // if (connectionState.sentMessages.length > (config.messages?.maxHistorySize || 100)) {
+      //   connectionState.sentMessages = connectionState.sentMessages.slice(
+      //     -(config.messages?.maxHistorySize || 100)
+      //   );
+      // }
+
+      return {
+        success: true,
+        messageId: result.key.id,
+        telefono: formattedPhone,
+        template: templateOption,
+        sentAt: new Date().toISOString(),
+        // messagePreview: sentMessage.messagePreview,
+        messagePreview: plantilla.text.substring(0, 100) +
+        (plantilla.text.length > 100 ? "..." : "")
+      };
+    } catch (error) {
+      logger.error("Error enviando mensaje WhatsApp", {
+        telefono: formattedPhone,
+        error: error.message,
+        stack: error.stack,
+      });
+
+      // if (error.message.includes("disconnected")) {
+      //   await cleanupConnection();
+      //   throw new Error("Conexión perdida con WhatsApp. Por favor, escanea el código QR nuevamente.");
+      // }
+
+      // if (error.message.includes("not-authorized")) {
+      //   throw new Error("No tienes autorización para enviar mensajes a este número.");
+      // }
+
+      // if (error.message.includes("forbidden")) {
+      //   throw new Error("No se puede enviar mensajes a este número. Verifica que el número sea válido.");
+      // }
+
+      // if (error.message.includes("rate limit")) {
+      //   throw new Error("Límite de mensajes alcanzado. Espera un momento antes de enviar más mensajes.");
+      // }
+
+      throw new Error(`Error al enviar mensaje: ${error.message}`);
+    }
+ },
   async sendMessageWithImage({ imageData, phone, caption }) {
     if (!connectionState.socket?.user) {
       throw new Error('No conectado a WhatsApp. Por favor, escanea el código QR primero.');
@@ -1114,5 +1434,11 @@ export default {
 
       throw new Error(`Error al enviar mensaje: ${error.message}`);
     }
-  }
+  },
+
+
+ 
 };
+
+//funcion para llegada de mensajes
+ 
