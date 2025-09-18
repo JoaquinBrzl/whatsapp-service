@@ -7,8 +7,12 @@ import { Server } from 'socket.io';
 import messageRoutes from './routes/message.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import jwt from 'jsonwebtoken';
-import whatsappService from './services/whatsapp.service.js';
+import whatsappService, {startWhatsAppBot} from './services/whatsapp.service.js';
 import 'dotenv/config';
+import path from "path";
+import { fileURLToPath } from "url";
+
+// startWhatsAppBot();
 
 // Procesa ALLOWED_ORIGINS (separado por comas) o usa localhost por defecto
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
@@ -23,6 +27,10 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/public", express.static(path.join(__dirname, "public")));
 
 app.use(helmet());
 
