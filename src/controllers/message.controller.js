@@ -2,6 +2,9 @@ import whatsappService from "../services/whatsapp.service.js";
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
+import { BASE_URL } from "../config/index.js";
+
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +44,40 @@ const { nombre, templateOption, telefono, fecha, hora} = req.body;
     });
   }
 }
+export async function sendMessageWithImageDashboard(req, res) {
+  try {
+    const { nombre, templateOption, telefono, fecha, hora } = req.body;
+
+    const image = req.file
+      ? `${BASE_URL}/public/imagenes_dashboard/${req.file.filename}`
+      : null;
+    
+      console.log('image',image)
+    
+      const result = await whatsappService.sendMessageImageDashboard({
+      nombre,
+      templateOption,
+      telefono,
+      fecha,
+      hora,
+      image,
+    });
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Error en sendMessageWithImage:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
+
 
 export function getStatus(req, res) {
   try {
