@@ -29,7 +29,7 @@ En DigiMedia desarrollamos estrategias innovadoras y auténticas que conectan co
 
     default:
       return {
-        text: `Hola ${nombre}, este es un mensaje automático.`,
+        text: `Holas ${nombre}, este es un mensaje automático.`,
         image: `${BASE_URL}/public/imagenes/default.jpg`
       };
   }
