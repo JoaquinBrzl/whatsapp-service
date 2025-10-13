@@ -13,15 +13,6 @@ export async function sendMessage(req, res) {
   try {
 const { nombre, templateOption, telefono, fecha, hora} = req.body;
 
-    // Validaciones adicionales
-    // if (!phone || !templateOption || !psicologo || !fecha || !hora) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Faltan campos requeridos",
-    //     required: ["phone", "templateOption", "psicologo", "fecha", "hora"],
-    //   });
-    // }
-
       const result = await whatsappService.sendMessage({
       nombre,
       templateOption,
