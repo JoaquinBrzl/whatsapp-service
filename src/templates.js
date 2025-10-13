@@ -15,15 +15,25 @@ export function getTemplate(option, params = {}) {
 
     case 'cita_gratis'://bienvenida
       return {
-        text: `✨ ¡Hola ${nombre}! ✨
-            Sabemos que aprender sobre lo digital es la clave para que tu proyecto sea único y llamativo 💡🌐.
+        text: `✨ ¡Hola ${nombre}! Te saluda Digimedia. 💻🚀
 
-En DigiMedia desarrollamos estrategias innovadoras y auténticas que conectan con jóvenes como tú 🙌🎯.
+Potencia tu presencia online con una página web profesional y personalizada para tu marca.
 
-📱 Desde la gestión de tus redes hasta campañas que realmente venden 💰🔥, queremos llevar tu marca al siguiente nivel 🚀.
+Te ayudamos con:
 
-¿Quieres que te muestre cómo lograr que tus ideas brillen en internet? 🌟💻
-👉 Escríbeme y lo hacemos realidad juntos. 🤝✨`,
+  🌐 Diseño web *moderno y a tu medida*.
+  ⚡ Desarrollo optimizado y veloz.
+  📱 100% adaptable a móviles.
+  🎯 SEO listo para posicionarte en Google.
+  💰 Inversión inteligente que multiplica tus ventas.
+
+  👉 Todo en un solo servicio creado para hacer crecer tu negocio sin límites.
+
+    “𝘚𝘪 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘴𝘵𝘢́ 𝘦𝘯 𝘐𝘯𝘵𝘦𝘳𝘯𝘦𝘵, 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘹𝘪𝘴𝘵𝘦.” -Bill gates
+
+Tu negocio no puede esperar más para crecer.
+
+Hazlo digital con *DigiMedia.*`,
         image: `${BASE_URL}/public/imagenes/Flyer.jpg`
       };
 
