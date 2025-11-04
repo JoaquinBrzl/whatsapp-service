@@ -59,7 +59,7 @@ whatsappRouter.get('/status', (req, res) => {
 });
 
 // Endpoint de diagnóstico de red
-whatsappRouter.get('/api/check-network', (req, res) => {
+whatsappRouter.get('/check-network', (req, res) => {
   https.get('https://www.google.com', (response) => {
     if (response.statusCode === 200) {
       return res.json({

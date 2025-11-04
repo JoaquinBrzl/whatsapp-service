@@ -73,10 +73,8 @@ app.use('/api/auth', authRoutes);
 // Rutas de mensajes (con API key)
 app.use('/api', messageRoutes);
 
-// 🚨 MONTAJE CRÍTICO DEL ROUTER DE WHATSAPP
 // Montamos las rutas de server.js (incluyendo /status y /send-message) 
-// directamente en la app Express.
-app.use(whatsappRouter);
+app.use('/api', whatsappRouter);
 
 // WebSocket para QR status
 io.on('connection', (socket) => {
