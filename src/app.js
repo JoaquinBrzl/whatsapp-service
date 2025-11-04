@@ -7,10 +7,11 @@ import { Server } from 'socket.io';
 import messageRoutes from './routes/message.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import jwt from 'jsonwebtoken';
-import whatsappService, {startWhatsAppBot} from './services/whatsapp.service.js';
+import whatsappService, { startWhatsAppBot } from './services/whatsapp.service.js';
 import 'dotenv/config';
 import path from "path";
 import { fileURLToPath } from "url";
+import { whatsappRouter, connectToWhatsApp } from '../server.js';
 
 // startWhatsAppBot();
 
@@ -71,6 +72,11 @@ app.use('/api/auth', authRoutes);
 
 // Rutas de mensajes (con API key)
 app.use('/api', messageRoutes);
+
+// 🚨 MONTAJE CRÍTICO DEL ROUTER DE WHATSAPP
+// Montamos las rutas de server.js (incluyendo /status y /send-message) 
+// directamente en la app Express.
+app.use(whatsappRouter);
 
 // WebSocket para QR status
 io.on('connection', (socket) => {
@@ -136,4 +142,5 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Error interno del servidor' });
 });
 
-export { server, io };
+// 🚨 EXPORTAMOS LA FUNCIÓN DE CONEXIÓN DE WHATSAPP ADEMÁS DE SERVER e IO
+export { server, io, connectToWhatsApp };

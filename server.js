@@ -3,14 +3,17 @@ import { makeWASocket, DisconnectReason, useMultiFileAuthState } from '@whiskeys
 import qrcode from 'qrcode-terminal';
 import express from 'express';
 import cors from 'cors';
+import https from 'https';
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const whatsappRouter = express.Router();
+whatsappRouter.use(cors());
+whatsappRouter.use(express.json());
 
 let sock;
 let isConnected = false;
+let lastKnownError = null;
 
+// La función de conexión se mantiene igual
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
@@ -28,6 +31,8 @@ async function connectToWhatsApp() {
     }
 
     if (connection === 'close') {
+      lastKnownError = lastDisconnect?.error?.output || lastDisconnect?.error;
+
       const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
       console.log('Conexión cerrada. Reconectando...', shouldReconnect);
       if (shouldReconnect) {
@@ -37,14 +42,42 @@ async function connectToWhatsApp() {
     } else if (connection === 'open') {
       console.log('¡Conectado a WhatsApp!');
       isConnected = true;
+      lastKnownError = null;
     }
   });
 
   sock.ev.on('creds.update', saveCreds);
 }
 
+// Endpoint de estado
+whatsappRouter.get('/status', (req, res) => {
+  res.json({
+    connected: isConnected,
+    lastError: lastKnownError,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Endpoint de diagnóstico de red
+whatsappRouter.get('/api/check-network', (req, res) => {
+  https.get('https://www.google.com', (response) => {
+    if (response.statusCode === 200) {
+      return res.json({
+        network: 'OK',
+        message: 'Conectividad saliente a Google (443) exitosa.'
+      });
+    }
+  }).on('error', (err) => {
+    return res.status(500).json({
+      network: 'FAILED',
+      error: err.code,
+      message: 'Fallo de conectividad saliente. Revise Firewall de Hostinger.'
+    });
+  });
+});
+
 // API endpoint para enviar mensajes
-app.post('/send-message', async (req, res) => {
+whatsappRouter.post('/send-message', async (req, res) => {
   try {
     if (!isConnected) {
       return res.status(503).json({
@@ -62,9 +95,8 @@ app.post('/send-message', async (req, res) => {
       });
     }
 
-    // Formatear número (agregar código de país si no lo tiene)
     let formattedPhone = phone.replace(/[^\d]/g, '');
-    if (formattedPhone.length < 8) { // Para Perú
+    if (formattedPhone.length < 8) {
       return res.status(400).json({
         success: false,
         message: 'El número de teléfono debe estar en formato internacional, ej: +51987654321'
@@ -92,16 +124,4 @@ app.post('/send-message', async (req, res) => {
   }
 });
 
-// Endpoint para verificar estado de conexión
-app.get('/status', (req, res) => {
-  res.json({
-    connected: isConnected,
-    timestamp: new Date().toISOString()
-  });
-});
-
-const PORT = process.env.PORT || 5111;
-app.listen(PORT, () => {
-  console.log(`Servidor WhatsApp corriendo en puerto ${PORT}`);
-  connectToWhatsApp();
-});
+export { whatsappRouter, connectToWhatsApp };
