@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { emitQrStatusUpdate } from '../app.js';
 import { getWhatsAppConfig } from '../config/whatsapp.config.js';
 import { chatbotFlow } from '../chatbot/chatbotFlow.js';
-import fs from 'fs';
+
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', {
@@ -817,20 +817,9 @@ export default {
 
     // 🔹 Obtiene la plantilla (objeto con text + image)
     const plantilla = getTemplateMessage(templateOption, { nombre, fecha, hora,image });
-    console.log('Plantilla Image Path:', plantilla.image);
-    
+
     if (!plantilla || !plantilla.text) {
       throw new Error("Plantilla de mensaje no válida");
-    }
-
-    if (plantilla.image && fs.existsSync(plantilla.image)) {
-        messagePayload.image = { 
-            stream: fs.createReadStream(plantilla.image),
-            caption: plantilla.text
-        };
-    } else {
-        messagePayload.text = plantilla.text;
-        logger.warn('Ruta de imagen no válida o archivo no encontrado, enviando solo texto.');
     }
 
     try {
