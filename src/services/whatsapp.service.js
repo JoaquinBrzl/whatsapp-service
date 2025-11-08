@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { emitQrStatusUpdate } from '../app.js';
 import { getWhatsAppConfig } from '../config/whatsapp.config.js';
 import { chatbotFlow } from '../chatbot/chatbotFlow.js';
-
+import fs from 'fs';
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', {
@@ -836,6 +836,16 @@ export default {
       image: { url: plantilla.image },
       caption: plantilla.text
     };
+
+    if (plantilla.image && fs.existsSync(plantilla.image)) {
+        messagePayload.image = { 
+            stream: fs.createReadStream(plantilla.image),
+            caption: plantilla.text
+        };
+    } else {
+        messagePayload.text = plantilla.text;
+        logger.warn('Ruta de imagen no válida o archivo no encontrado, enviando solo texto.');
+    }
 
       const result = await connectionState.socket.sendMessage(formattedPhone, messagePayload);
 
