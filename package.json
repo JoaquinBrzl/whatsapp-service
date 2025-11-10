@@ -23,7 +23,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@whiskeysockets/baileys": "^7.0.0-rc.6",
+    "@whiskeysockets/baileys": "^6.7.18",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
