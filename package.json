@@ -16,7 +16,8 @@
     "pm2:stop": "pm2 stop whatsapp-service",
     "pm2:restart": "pm2 restart whatsapp-service",
     "pm2:logs": "pm2 logs whatsapp-service",
-    "pm2:status": "pm2 status"
+    "pm2:status": "pm2 status",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": "",
@@ -32,6 +33,8 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "socket.io": "^4.8.1"
