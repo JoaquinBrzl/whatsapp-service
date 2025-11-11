@@ -2,8 +2,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# #  Instalar certificados y herramientas de red
-# RUN apk add --no-cache ca-certificates curl
+#  Instalar certificados y herramientas de red
+RUN apk add --no-cache ca-certificates curl
 
 # Copia package.json y patches antes de instalar dependencias
 COPY package*.json ./
