@@ -5,6 +5,8 @@ import logger from '../utils/logger.js';
 import { emitQrStatusUpdate } from '../app.js';
 import { getWhatsAppConfig } from '../config/whatsapp.config.js';
 import { chatbotFlow } from '../chatbot/chatbotFlow.js';
+import axios from "axios";
+import fs from "fs";
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', {
@@ -592,16 +594,16 @@ async function getImageBase64(imgPath) {
   try {
     if (imgPath.startsWith("http")) {
       const response = await fetch(imgPath, {
-        timeout: 30000, // 30s timeout
+        timeout: 30000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
       });
       if (!response.ok) throw new Error(`HTTP ${response.status} al descargar ${imgPath}`);
       const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer).toString("base64");
+      return Buffer.from(arrayBuffer);
     } else {
-      return fs.readFileSync(path.resolve(imgPath), { encoding: "base64" });
+      return fs.readFileSync(path.resolve(imgPath));
     }
   } catch (error) {
     console.error(`Error obteniendo imagen desde ${imgPath}:`, error.message);
@@ -845,48 +847,8 @@ export default {
     // Descargar imagen como base64
     const imageBase64 = await getImageBase64(plantilla.image);
     if (!imageBase64) {
-      logger.warn('No se pudo descargar la imagen, enviando solo texto', { telefono: formattedPhone });
-      try {
-        const textPayload = { text: plantilla.text };
-        const result = await this.sendMessageImageWithRetry(formattedPhone, textPayload, 3);
-
-        // Guarda historial para texto
-        const sentMessage = {
-          telefono: formattedPhone,
-          template: templateOption,
-          nombre,
-          fecha,
-          hora,
-          messageId: result.key.id,
-          sentAt: new Date().toISOString(),
-          messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
-          status: "sent",
-          type: "text",
-          imageSize: null
-        };
-
-        connectionState.sentMessages.push(sentMessage);
-
-        const config = getWhatsAppConfig();
-        if (connectionState.sentMessages.length > (config.messages?.maxHistorySize || 100)) {
-          connectionState.sentMessages = connectionState.sentMessages.slice(
-            -(config.messages?.maxHistorySize || 100)
-          );
-        }
-
-        return {
-          success: true,
-          messageId: result.key.id,
-          telefono: formattedPhone,
-          template: templateOption,
-          sentAt: new Date().toISOString(),
-          messagePreview: sentMessage.messagePreview,
-          fallbackToText: true
-        };
-      } catch (fallbackError) {
-        logger.error('Fallo también el fallback a texto', { telefono: formattedPhone, error: fallbackError.message });
-        throw fallbackError;
-      }
+      logger.warn('No se pudo descargar la imagen, no se enviará ningún mensaje', { telefono: formattedPhone });
+      return { success: false, message: "No se envió mensaje por error de imagen" };
     }
 
     try {
@@ -899,9 +861,8 @@ export default {
         imageUrl: plantilla.image
       });
 
-      // Usar base64
       const messagePayload = {
-        image: imageBase64, // Base64
+        image: imageBase64,
         caption: plantilla.text
       };
 
@@ -913,7 +874,6 @@ export default {
         timestamp: new Date().toISOString(),
       });
 
-      // Guarda historial
       const sentMessage = {
         telefono: formattedPhone,
         template: templateOption,
@@ -925,7 +885,7 @@ export default {
         messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
         status: "sent",
         type: "image",
-        imageSize: imageBase64.length // Tamaño del base64
+        imageSize: imageBase64.length
       };
 
       connectionState.sentMessages.push(sentMessage);
@@ -946,42 +906,8 @@ export default {
         messagePreview: sentMessage.messagePreview
       };
     } catch (error) {
-      // Fallback: Si falla el envío con base64, enviar solo texto
-      logger.warn('Fallo al enviar imagen con base64, enviando solo texto', { telefono: formattedPhone });
-      try {
-        const textPayload = { text: plantilla.text };
-        const result = await this.sendMessageImageWithRetry(formattedPhone, textPayload, 3);
-
-        // Guarda historial para texto
-        const sentMessage = {
-          telefono: formattedPhone,
-          template: templateOption,
-          nombre,
-          fecha,
-          hora,
-          messageId: result.key.id,
-          sentAt: new Date().toISOString(),
-          messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
-          status: "sent",
-          type: "text",
-          imageSize: null
-        };
-
-        connectionState.sentMessages.push(sentMessage);
-
-        return {
-          success: true,
-          messageId: result.key.id,
-          telefono: formattedPhone,
-          template: templateOption,
-          sentAt: new Date().toISOString(),
-          messagePreview: sentMessage.messagePreview,
-          fallbackToText: true
-        };
-      } catch (fallbackError) {
-        logger.error('Fallo también el fallback a texto', { telefono: formattedPhone, error: fallbackError.message });
-        throw fallbackError;
-      }
+      logger.error('Fallo al enviar mensaje con imagen, no se enviará nada', { telefono: formattedPhone, error: error.message });
+      return { success: false, message: "Error al enviar imagen, no se envió mensaje" };
     }
   },
   async sendMessageWithImage({ imageData, phone, caption }) {
