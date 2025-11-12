@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { emitQrStatusUpdate } from '../app.js';
 import { getWhatsAppConfig } from '../config/whatsapp.config.js';
 import { chatbotFlow } from '../chatbot/chatbotFlow.js';
-
+import axios from 'axios';
 
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', {
@@ -110,6 +110,13 @@ export async function startWhatsAppBot() {
   const sock = makeWASocket({
     printQRInTerminal: true,
     auth: state,
+    mediaTimeoutMs: 60000,
+    connectTimeoutMs: 60000,
+    ws: {
+      timeout: 60000,
+      keepalive: true,
+      keepaliveInterval: 15000,
+    },
   });
 
   sock.ev.on('connection.update', (update) => {
@@ -582,6 +589,20 @@ async function generateOptimalQR(qrString, format = 'PNG') {
   }
 }
 
+async function downloadImageAsBase64(url) {
+  try {
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 30000, // 30s timeout para descarga
+      headers: { 'User-Agent': 'WhatsAppBot/1.0' } // Evita bloqueos
+    });
+    const buffer = Buffer.from(response.data, 'binary');
+    return `data:image/jpeg;base64,${buffer.toString('base64')}`; // Asume JPEG; ajusta MIME si sabes
+  } catch (error) {
+    throw new Error(`Error descargando imagen: ${error.message}`);
+  }
+}
+
 // API Pública
 export default {
   async requestQR(userId) {
@@ -798,7 +819,8 @@ export default {
     if (!connectionState.socket?.user) {
       throw new Error("No conectado a WhatsApp. Por favor, escanea el código QR primero.");
     }
-      console.log('imagedash',image)
+
+    console.log('imagedash', image); // Mantén esto para debugging si quieres
 
     const cleanPhone = telefono.replace(/\D/g, "");
     if (cleanPhone.length < 10 || cleanPhone.length > 15) {
@@ -807,59 +829,74 @@ export default {
 
     const formattedPhone = `${cleanPhone}@s.whatsapp.net`;
 
-    // 🔹 Obtiene la plantilla (objeto con text + image)
-    const plantilla = getTemplateMessage(templateOption, { nombre, fecha, hora,image });
+    // Obtiene la plantilla (objeto con text + image)
+    const plantilla = getTemplateMessage(templateOption, { nombre, fecha, hora, image });
 
-    if (!plantilla || !plantilla.text) {
-      throw new Error("Plantilla de mensaje no válida");
+    if (!plantilla || !plantilla.text || !plantilla.image) {
+      throw new Error("Plantilla de mensaje no válida o falta imagen");
+    }
+
+    // Descargar la imagen como base64 antes de enviar
+    let imageData;
+    try {
+      imageData = await downloadImageAsBase64(plantilla.image);
+    } catch (error) {
+      logger.error("Error descargando imagen para envío", {
+        telefono: formattedPhone,
+        url: plantilla.image,
+        error: error.message
+      });
+      throw new Error(`No se pudo preparar la imagen: ${error.message}`);
     }
 
     try {
-      logger.info("Enviando mensaje WhatsApp", {
+      logger.info("Enviando mensaje WhatsApp con imagen", {
         telefono: formattedPhone,
         template: templateOption,
         nombre,
         fecha,
         hora,
-         image: plantilla.image,
+        imageUrl: plantilla.image, // Loggea la URL original para debugging
+        imageSize: imageData.length // Tamaño aproximado del base64
       });
 
-    const messagePayload = {
-      image: { url: plantilla.image },
-      caption: plantilla.text
-    };
+      const messagePayload = {
+        image: imageData, // Ahora es base64, no URL
+        caption: plantilla.text
+      };
 
-      const result = await connectionState.socket.sendMessage(formattedPhone, messagePayload);
+      // 🔹 Usar retries para manejar timeouts
+      const result = await this.sendMessageImageWithRetry(formattedPhone, messagePayload, 3);
 
-      // logger.info("Mensaje enviado exitosamente", {
-      //   telefono: formattedPhone,
-      //   messageId: result.key.id,
-      //   timestamp: new Date().toISOString(),
-      // });
+      logger.info("Mensaje enviado exitosamente", {
+        telefono: formattedPhone,
+        messageId: result.key.id,
+        timestamp: new Date().toISOString(),
+      });
 
-      // // Guarda historial
-      // const sentMessage = {
-      //   telefono: formattedPhone,
-      //   template: templateOption,
-      //   nombre,
-      //   fecha,
-      //   hora,
-      //   messageId: result.key.id,
-      //   sentAt: new Date().toISOString(),
-      //   messagePreview:
-      //     plantilla.text.substring(0, 100) +
-      //     (plantilla.text.length > 100 ? "..." : ""),
-      //   status: "sent",
-      // };
+      // Guarda historial (descomentado para funcionalidad completa)
+      const sentMessage = {
+        telefono: formattedPhone,
+        template: templateOption,
+        nombre,
+        fecha,
+        hora,
+        messageId: result.key.id,
+        sentAt: new Date().toISOString(),
+        messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
+        status: "sent",
+        type: "image", // Agregado para distinguir
+        imageSize: imageData.length
+      };
 
-      // connectionState.sentMessages.push(sentMessage);
+      connectionState.sentMessages.push(sentMessage);
 
-      // const config = getWhatsAppConfig();
-      // if (connectionState.sentMessages.length > (config.messages?.maxHistorySize || 100)) {
-      //   connectionState.sentMessages = connectionState.sentMessages.slice(
-      //     -(config.messages?.maxHistorySize || 100)
-      //   );
-      // }
+      const config = getWhatsAppConfig();
+      if (connectionState.sentMessages.length > (config.messages?.maxHistorySize || 100)) {
+        connectionState.sentMessages = connectionState.sentMessages.slice(
+          -(config.messages?.maxHistorySize || 100)
+        );
+      }
 
       return {
         success: true,
@@ -867,9 +904,7 @@ export default {
         telefono: formattedPhone,
         template: templateOption,
         sentAt: new Date().toISOString(),
-        // messagePreview: sentMessage.messagePreview,
-        messagePreview: plantilla.text.substring(0, 100) +
-        (plantilla.text.length > 100 ? "..." : "")
+        messagePreview: sentMessage.messagePreview
       };
     } catch (error) {
       logger.error("Error enviando mensaje WhatsApp", {
@@ -878,26 +913,15 @@ export default {
         stack: error.stack,
       });
 
-      // if (error.message.includes("disconnected")) {
-      //   await cleanupConnection();
-      //   throw new Error("Conexión perdida con WhatsApp. Por favor, escanea el código QR nuevamente.");
-      // }
-
-      // if (error.message.includes("not-authorized")) {
-      //   throw new Error("No tienes autorización para enviar mensajes a este número.");
-      // }
-
-      // if (error.message.includes("forbidden")) {
-      //   throw new Error("No se puede enviar mensajes a este número. Verifica que el número sea válido.");
-      // }
-
-      // if (error.message.includes("rate limit")) {
-      //   throw new Error("Límite de mensajes alcanzado. Espera un momento antes de enviar más mensajes.");
-      // }
+      // Manejo específico para timeouts
+      if (error.message.includes('ETIMEDOUT') || error.message.includes('timeout')) {
+        logger.warn('Timeout detectado al enviar imagen, intentando reconectar', { telefono: formattedPhone });
+        await this.forceReconnect();
+      }
 
       throw new Error(`Error al enviar mensaje: ${error.message}`);
     }
- },
+  },
   async sendMessageWithImage({ imageData, phone, caption }) {
     if (!connectionState.socket?.user) {
       throw new Error('No conectado a WhatsApp. Por favor, escanea el código QR primero.');
