@@ -879,9 +879,15 @@ export default {
         messagePreview: sentMessage.messagePreview
       };
     } catch (error) {
-      // Fallback: Si falla la imagen, enviar solo texto
-      if (error.message.includes('image') || error.message.includes('download') || error.message.includes('fetch')) {
-        logger.warn('Fallo al enviar imagen, enviando solo texto', { telefono: formattedPhone });
+      // Fallback: Si falla la imagen (por descarga, timeout o conexión), enviar solo texto
+      if (
+        error.message.includes('image') ||
+        error.message.includes('download') ||
+        error.message.includes('fetch') ||
+        error.message.includes('ETIMEDOUT') ||
+        error.message.includes('connect')
+      ) {
+        logger.warn('Fallo al enviar imagen (timeout/conexión), enviando solo texto', { telefono: formattedPhone });
         try {
           const textPayload = { text: plantilla.text };
           const result = await this.sendMessageImageWithRetry(formattedPhone, textPayload, 3);
@@ -897,7 +903,7 @@ export default {
             sentAt: new Date().toISOString(),
             messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
             status: "sent",
-            type: "text", // Fallback a texto
+            type: "text",
             imageSize: null
           };
 
@@ -910,7 +916,7 @@ export default {
             template: templateOption,
             sentAt: new Date().toISOString(),
             messagePreview: sentMessage.messagePreview,
-            fallbackToText: true // Indica que fue fallback
+            fallbackToText: true
           };
         } catch (fallbackError) {
           logger.error('Fallo también el fallback a texto', { telefono: formattedPhone, error: fallbackError.message });
@@ -924,7 +930,7 @@ export default {
         });
 
         // Manejo específico para otros errores
-        if (error.message.includes('ETIMEDOUT') || error.message.includes('timeout')) {
+        if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
           logger.warn('Timeout detectado, intentando reconectar', { telefono: formattedPhone });
           await this.forceReconnect();
         }
