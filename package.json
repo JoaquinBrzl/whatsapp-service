@@ -25,7 +25,6 @@
   "description": "",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.21",
-    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",

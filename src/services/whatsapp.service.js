@@ -391,7 +391,7 @@ async function createNewSession() {
       printQRInTerminal: config.security?.printQRInTerminal || false,
       connectTimeoutMs: config.stability?.connectionTimeout || config.connection?.connectTimeoutMs || 30000,
       browser: [config.browser?.name || 'Chrome', config.browser?.version || '120.0.0.0', config.browser?.os || 'Windows'],
-      keepAliveIntervalMs: config.connection?.keepAliveIntervalMs || 15000,
+      keepAliveIntervalMs: config.connection?.keepAliveIntervalMs || 60000,
       markOnlineOnConnect: config.security?.markOnlineOnConnect !== false,
       syncFullHistory: false,
       retryRequestDelayMs: config.connection?.retryRequestDelayMs || 1000,
@@ -585,9 +585,28 @@ async function generateOptimalQR(qrString, format = 'PNG') {
 // API Pública
 export default {
   async requestQR(userId) {
+    
+    logger.info('Requesting new QR code', { userId });    
+    // GUARDÍAN: Si ya estamos conectando o reconectando, no hacer nada.
+    if (connectionState.isConnecting || connectionState.isReconnecting) {
+      logger.warn('Ignoring QR request: A connection attempt is already in progress.');
+      throw {
+        code: 'CONNECTION_IN_PROGRESS',
+        message: 'Ya se está intentando conectar o reconectar. Por favor, espera unos segundos.'
+      };
+    }
+    
     try {
-      logger.info('Requesting new QR code', { userId });
+      // Si ya hay una sesión activa, no regeneres QR
+      if (connectionState.socket?.user) {
+        return {
+          success: false,
+          message: 'Ya estás conectado a WhatsApp. No es necesario escanear otro QR.',
+          isConnected: true
+        };
+      }
 
+      // Si hay un QR activo que aún no expiró, no generes otro
       if (connectionState.qrData && Date.now() < connectionState.qrData.expiresAt) {
         throw {
           code: 'QR_ACTIVE',
@@ -629,40 +648,12 @@ export default {
         };
       }
 
-      // Esperar menos tiempo para que se genere el QR automáticamente
-      let qrGenerated = false;
-      const config = getWhatsAppConfig();
-      const forceQrDelay = config.stability?.qrTimeout ? Math.floor(config.stability.qrTimeout / 5) : 3000;
-
-      setTimeout(() => {
-        try {
-          if (!connectionState.qrData && !qrGenerated) {
-            logger.info('Forcing QR generation after timeout');
-            generateNewQR(connectionState.socket).then(qrImage => {
-              if (!qrGenerated) {
-                qrGenerated = true;
-                try {
-                  emitQrStatusUpdate(getQRStatus());
-                } catch (emitError) {
-                  logger.error('Error emitting forced QR update', { error: emitError.message });
-                }
-              }
-            }).catch(error => {
-              logger.error('Error forcing QR generation', { error: error.message });
-            });
-          }
-        } catch (error) {
-          logger.error('Error in QR generation timeout', { error: error.message });
-        }
-      }, forceQrDelay);
-
       connectionState.userConnections.set(userId, [...userHistory, now].slice(-10));
 
       return {
         success: true,
         message: `Solicitud de QR procesada. El QR se generará automáticamente en ${forceQrDelay / 1000} segundos.`,
-        status: 'processing',
-        estimatedTime: forceQrDelay
+        status: 'processing'
       };
     } catch (error) {
       logger.error('Error generating QR', {
@@ -673,15 +664,16 @@ export default {
       });
 
       try {
-        connectionState.isConnecting = false;
-        connectionState.connectionStatus = 'disconnected';
+        // Reseteamos el estado si el error NO fue nuestro bloqueo
+        if (error.code !== 'CONNECTION_IN_PROGRESS') {
+          connectionState.isConnecting = false;
+          connectionState.connectionStatus = 'disconnected';
+        }
       } catch (resetError) {
         logger.error('Error resetting state', { error: resetError.message });
       }
 
       throw error;
-    } finally {
-      connectionState.isConnecting = false;
     }
   },
 
