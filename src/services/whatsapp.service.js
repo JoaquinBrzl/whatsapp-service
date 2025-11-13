@@ -745,7 +745,7 @@ export default {
     return getQRStatus();
   },
 
- async sendMessage({ telefono, templateOption, nombre, fecha, hora }) {
+  async sendMessage({ telefono, templateOption, nombre, fecha, hora }) {
     if (!connectionState.socket?.user) {
       throw new Error("No conectado a WhatsApp. Por favor, escanea el código QR primero.");
     }
@@ -764,6 +764,21 @@ export default {
       throw new Error("Plantilla de mensaje no válida");
     }
 
+    let messagePayload = { text: plantilla.text };
+
+    // Si la plantilla tiene imagen, descargarla localmente como buffer
+    if (plantilla.image) {
+      const imageBuffer = await getImageBase64(plantilla.image);
+      if (!imageBuffer) {
+        logger.warn('No se pudo cargar la imagen localmente, enviando solo texto', { telefono: formattedPhone, image: plantilla.image });
+      } else {
+        messagePayload = {
+          image: imageBuffer,
+          caption: plantilla.text
+        };
+      }
+    }
+
     try {
       logger.info("Enviando mensaje WhatsApp", {
         telefono: formattedPhone,
@@ -772,11 +787,8 @@ export default {
         fecha,
         hora,
         messageLength: plantilla.text.length,
+        hasImage: !!plantilla.image
       });
-
-      const messagePayload = plantilla.image
-        ? { image: { url: plantilla.image }, caption: plantilla.text }
-        : { text: plantilla.text };
 
       const result = await connectionState.socket.sendMessage(formattedPhone, messagePayload);
 
@@ -795,10 +807,9 @@ export default {
         hora,
         messageId: result.key.id,
         sentAt: new Date().toISOString(),
-        messagePreview:
-          plantilla.text.substring(0, 100) +
-          (plantilla.text.length > 100 ? "..." : ""),
+        messagePreview: plantilla.text.substring(0, 100) + (plantilla.text.length > 100 ? "..." : ""),
         status: "sent",
+        hasImage: !!plantilla.image
       };
 
       connectionState.sentMessages.push(sentMessage);
@@ -844,7 +855,7 @@ export default {
 
       throw new Error(`Error al enviar mensaje: ${error.message}`);
     }
- },
+  },
 
 
   async sendMessageImageDashboard({ telefono, templateOption, nombre, fecha, hora, image }) {

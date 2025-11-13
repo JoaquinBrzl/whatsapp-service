@@ -1,4 +1,5 @@
 import { BASE_URL } from "./config/index.js";
+
 //plantilla para enviar mensaje por popups
 export function getTemplate(option, params = {}) {
   const {
@@ -9,11 +10,8 @@ export function getTemplate(option, params = {}) {
 
   console.log("📝 Plantilla generada:", params);
 
-
-
   switch (option) {
-
-    case 'cita_gratis'://bienvenida
+    case 'cita_gratis': //bienvenida
       return {
         text: `✨ ¡Hola ${nombre}! Te saluda Digimedia. 💻🚀
 
@@ -29,18 +27,18 @@ Te ayudamos con:
 
   👉 Todo en un solo servicio creado para hacer crecer tu negocio sin límites.
 
-    “𝘚𝘪 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘴𝘵𝘢́ 𝘦𝘯 𝘐𝘯𝘵𝘦𝘳𝘯𝘦𝘵, 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘹𝘪𝘴𝘵𝘦.” -Bill gates
+    "𝘚𝘪 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘴𝘵𝘢́ 𝘦𝘯 𝘐𝘯𝘵𝘦𝘳𝘯𝘦𝘵, 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘹𝘪𝘴𝘵𝘦." -Bill gates
 
 Tu negocio no puede esperar más para crecer.
 
 Hazlo digital con *DigiMedia.*`,
-        image: `${BASE_URL}/public/imagenes/Flyer.jpg`
+        image: 'imagenes/Flyer.jpg'  // Ruta relativa local
       };
 
     default:
       return {
         text: `Holas ${nombre}, este es un mensaje automático.`,
-        image: `${BASE_URL}/public/imagenes/default.jpg`
+        image: 'imagenes/default.jpg'  // Ruta relativa local
       };
   }
 }
@@ -55,8 +53,6 @@ export function getTemplateMessage(option, params = {}) {
   } = params;
 
   console.log("📝 Plantilla generada:", params);
-
-
 
   switch (option) {
     case 'cita_gratis':
@@ -74,20 +70,16 @@ export function getTemplateMessage(option, params = {}) {
 Si tienes alguna consulta, no dudes en contactarnoss.
 
 ¡Te esperamos! 🌟`,
-        image: image 
+        image: image  // Ya es una ruta relativa pasada desde el frontend
       };
 
     default:
       return {
         text: `Hola ${nombre}, este es un mensaje automático.`,
-        image: `${BASE_URL}/public/imagenes/Flyer.jpg`
+        image: 'imagenes/Flyer.jpg'  // Ruta relativa local
       };
   }
 }
-
-
-
-
 
 // Template para mensaje de pago aceptado
 export function getAcceptanceTemplate(comentario = '') {
@@ -96,9 +88,9 @@ export function getAcceptanceTemplate(comentario = '') {
 🎉 ¡Excelente! Tu comprobante de pago ha sido revisado y aprobado.
 
 📋 Estado de la revisión:
-   • ✅ APROBADO
-   • 📅 Fecha de revisión: ${new Date().toLocaleDateString('es-ES')}
-   • 🕐 Hora: ${new Date().toLocaleTimeString('es-ES')}
+   - ✅ APROBADO
+   - 📅 Fecha de revisión: ${new Date().toLocaleDateString('es-ES')}
+   - 🕐 Hora: ${new Date().toLocaleTimeString('es-ES')}
 
 ${comentario ? `💬 Comentario del administrador:
 "${comentario}"
@@ -117,9 +109,9 @@ export function getRejectionTemplate(comentario = '') {
 ⚠️ Tu comprobante de pago no pudo ser aprobado.
 
 📋 Estado de la revisión:
-   • ❌ RECHAZADO
-   • 📅 Fecha de revisión: ${new Date().toLocaleDateString('es-ES')}
-   • 🕐 Hora: ${new Date().toLocaleTimeString('es-ES')}
+   - ❌ RECHAZADO
+   - 📅 Fecha de revisión: ${new Date().toLocaleDateString('es-ES')}
+   - 🕐 Hora: ${new Date().toLocaleTimeString('es-ES')}
 
 ${comentario ? `💬 Comentario del administrador:
 "${comentario}"
