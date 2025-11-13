@@ -626,8 +626,9 @@ async function getImageBase64(imgPath) {
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } else {
-      // Para rutas locales directas
-      const fullPath = path.resolve(imgPath);
+      // Para rutas locales directas (relativas a src/public/)
+      const fullPath = path.resolve(process.cwd(), 'src', 'public', imgPath);
+      logger.info('Leyendo imagen localmente desde ruta relativa', { imgPath, fullPath });
       return await fs.promises.readFile(fullPath);
     }
   } catch (error) {
@@ -770,13 +771,12 @@ export default {
     if (plantilla.image) {
       const imageBuffer = await getImageBase64(plantilla.image);
       if (!imageBuffer) {
-        logger.warn('No se pudo cargar la imagen localmente, enviando solo texto', { telefono: formattedPhone, image: plantilla.image });
-      } else {
-        messagePayload = {
-          image: imageBuffer,
-          caption: plantilla.text
-        };
+        throw new Error(`No se pudo cargar la imagen: ${plantilla.image}`);
       }
+      messagePayload = {
+        image: imageBuffer,
+        caption: plantilla.text
+      };
     }
 
     try {
