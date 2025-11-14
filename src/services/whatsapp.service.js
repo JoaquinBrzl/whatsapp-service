@@ -746,7 +746,7 @@ export default {
     return getQRStatus();
   },
 
-  async sendMessage({ telefono, templateOption, nombre, fecha, hora }) {
+  async sendMessage({ telefono, templateOption, nombre, fecha, hora, productoName }) {
     if (!connectionState.socket?.user) {
       throw new Error("No conectado a WhatsApp. Por favor, escanea el código QR primero.");
     }
@@ -759,7 +759,7 @@ export default {
     const formattedPhone = `${cleanPhone}@s.whatsapp.net`;
 
     // 🔹 Obtiene la plantilla (objeto con text + image)
-    const plantilla = getTemplate(templateOption, { nombre, fecha, hora });
+    const plantilla = getTemplate(templateOption, { nombre, fecha, hora, productoName });
 
     if (!plantilla || !plantilla.text) {
       throw new Error("Plantilla de mensaje no válida");

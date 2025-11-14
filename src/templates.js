@@ -5,7 +5,8 @@ export function getTemplate(option, params = {}) {
   const {
     nombre = '',
     fecha = '',
-    hora = ''
+    hora = '',
+    productoName = 'un producto que te encantará'
   } = params;
 
   console.log("📝 Plantilla generada:", params);
@@ -15,31 +16,47 @@ export function getTemplate(option, params = {}) {
       return {
         text: `✨ ¡Hola ${nombre}! Te saluda Digimedia. 💻🚀
 
-Potencia tu presencia online con una página web profesional y personalizada para tu marca.
+          Potencia tu presencia online con una página web profesional y personalizada para tu marca.
 
-Te ayudamos con:
+          Te ayudamos con:
 
-  🌐 Diseño web *moderno y a tu medida*.
-  ⚡ Desarrollo optimizado y veloz.
-  📱 100% adaptable a móviles.
-  🎯 SEO listo para posicionarte en Google.
-  💰 Inversión inteligente que multiplica tus ventas.
+            🌐 Diseño web *moderno y a tu medida*.
+            ⚡ Desarrollo optimizado y veloz.
+            📱 100% adaptable a móviles.
+            🎯 SEO listo para posicionarte en Google.
+            💰 Inversión inteligente que multiplica tus ventas.
 
-  👉 Todo en un solo servicio creado para hacer crecer tu negocio sin límites.
+            👉 Todo en un solo servicio creado para hacer crecer tu negocio sin límites.
 
-    "𝘚𝘪 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘴𝘵𝘢́ 𝘦𝘯 𝘐𝘯𝘵𝘦𝘳𝘯𝘦𝘵, 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘹𝘪𝘴𝘵𝘦." -Bill gates
+              "𝘚𝘪 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘴𝘵𝘢́ 𝘦𝘯 𝘐𝘯𝘵𝘦𝘳𝘯𝘦𝘵, 𝘵𝘶 𝘯𝘦𝘨𝘰𝘤𝘪𝘰 𝘯𝘰 𝘦𝘹𝘪𝘴𝘵𝘦." -Bill gates
 
-Tu negocio no puede esperar más para crecer.
+          Tu negocio no puede esperar más para crecer.
 
-Hazlo digital con *DigiMedia.*`,
-        image: 'imagenes/Flyer.jpg'  // Ruta relativa local
+          Hazlo digital con *DigiMedia.*`,
+                  image: 'imagenes/Flyer.jpg'  // Ruta relativa local
       };
-
-    default:
+    
+    case 'producto': // Nuevo caso para cualquier producto
       return {
-        text: `Holas ${nombre}, este es un mensaje automático.`,
-        image: 'imagenes/default.jpg'  // Ruta relativa local
+        text: `🌟 ¡Hola ${nombre}! Te saluda Neon Led Publicidad. 💻🚀
+
+          Gracias por tu interés en **${productoName}**.
+
+          Para darte la mejor cotización y asesoría personalizada sobre este producto, por favor confírmanos:
+          
+          ✅ *Tipo de acabado* (ej. brillante, mate).
+          ✅ *Tamaño y cantidad* que necesitas.
+          ✅ *Uso principal* (interior/exterior, fijo/móvil).
+
+          Estamos listos para ayudarte a destacar tu marca con **${productoName}**. ¡Cuéntanos más para comenzar!`,
+          image: 'imagenes/Flyer.jpg' // Ruta relativa local
       };
+
+      default:
+        return {
+          text: `Holas ${nombre}, este es un mensaje automático.`,
+          image: 'imagenes/default.jpg'  // Ruta relativa local
+        };
   }
 }
 
