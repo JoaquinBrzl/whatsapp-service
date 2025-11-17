@@ -1,4 +1,4 @@
-import whatsappService from "../services/whatsapp.service.js";
+import WhatsAppManager from "../services/whatsappManager.js";
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -13,7 +13,7 @@ export async function sendMessage(req, res) {
   try {
 const { nombre, templateOption, telefono, fecha, hora, productoName} = req.body;
 
-      const result = await whatsappService.sendMessage({
+      const result = await WhatsAppManager.sendMessage({
       nombre,
       templateOption,
       telefono,
@@ -46,7 +46,7 @@ export async function sendMessageWithImageDashboard(req, res) {
     
       console.log('image',image)
     
-      const result = await whatsappService.sendMessageImageDashboard({
+      const result = await WhatsAppManager.sendMessageImageDashboard({
       nombre,
       templateOption,
       telefono,
@@ -75,7 +75,7 @@ export function getStatus(req, res) {
   try {
     res.json({
       success: true,
-      connected: whatsappService.isConnected(),
+      connected: WhatsAppManager.isConnected(),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -91,7 +91,7 @@ export function getStatus(req, res) {
 
 export function getQrStatus(req, res) {
   try {
-    const qrStatus = whatsappService.getQRStatus();
+    const qrStatus = WhatsAppManager.getQRStatus();
     res.json({
       success: true,
       ...qrStatus,
@@ -114,7 +114,7 @@ export async function startConnection(req, res) {
       `🔌 Usuario ${req.user.username} solicitando inicio de conexión`,
     );
 
-    const result = await whatsappService.startConnection();
+    const result = await WhatsAppManager.startConnection();
 
     if (result.success) {
       res.json({
@@ -144,7 +144,7 @@ export async function startConnection(req, res) {
 
 export function getQrCode(req, res) {
   try {
-    const qrData = whatsappService.getQrCode();
+    const qrData = WhatsAppManager.getQrCode();
 
     if (qrData) {
       return res.json({
@@ -176,11 +176,11 @@ export async function requestNewQr(req, res) {
     const userId = req.user.userId;
     console.log(`📱 Usuario ${userId} solicitando nuevo QR`);
 
-    const result = await whatsappService.requestQR(userId);
+    const result = await WhatsAppManager.requestQR(userId);
 
     if (result.success) {
       // Obtener el estado actual después de procesar la solicitud
-      const currentStatus = whatsappService.getQRStatus();
+      const currentStatus = WhatsAppManager.getQRStatus();
 
       res.json({
         success: true,
@@ -227,7 +227,7 @@ export async function requestNewQr(req, res) {
 export function getQrStats(req, res) {
   try {
     const userId = req.user.userId;
-    const stats = whatsappService.getQrStats(userId);
+    const stats = WhatsAppManager.getQrStats(userId);
 
     res.json({
       success: true,
@@ -251,7 +251,7 @@ export function forceExpireQr(req, res) {
     const userId = req.user.username;
     console.log(`🗑️ Usuario ${userId} forzando expiración de QR`);
 
-    const result = whatsappService.expireQR("admin_request", userId);
+    const result = WhatsAppManager.expireQR("admin_request", userId);
 
     res.json({
       success: true,
@@ -271,8 +271,8 @@ export function forceExpireQr(req, res) {
 // Función adicional para obtener información detallada del estado de conexión
 export function getConnectionInfo(req, res) {
   try {
-    const status = whatsappService.getQrStatus();
-    const isConnected = whatsappService.isConnected();
+    const status = WhatsAppManager.getQrStatus();
+    const isConnected = WhatsAppManager.isConnected();
 
     res.json({
       success: true,
@@ -281,7 +281,7 @@ export function getConnectionInfo(req, res) {
         status: status.status,
         message: status.message,
         connectionState: status.connectionState,
-        qrAvailable: !!whatsappService.getQrCode(),
+        qrAvailable: !!WhatsAppManager.getQrCode(),
         qrTimeRemaining: status.timeRemaining || 0,
       },
       timestamp: new Date().toISOString(),
@@ -306,12 +306,12 @@ export async function restartConnection(req, res) {
     );
 
     // Limpiar conexión actual
-    await whatsappService.cleanup();
+    await WhatsAppManager.cleanup();
 
     // Esperar un poco antes de reiniciar
     setTimeout(async () => {
       try {
-        const result = await whatsappService.startConnection();
+        const result = await WhatsAppManager.startConnection();
         console.log(`✅ Conexión reiniciada por ${userId}: ${result.message}`);
       } catch (error) {
         console.error(`❌ Error reiniciando conexión para ${userId}:`, error);
@@ -396,7 +396,7 @@ export function resetAuth(req, res) {
 // Función para obtener historial de mensajes enviados
 export function getSentMessages(req, res) {
   try {
-    const sentMessages = whatsappService.getSentMessages();
+    const sentMessages = WhatsAppManager.getSentMessages();
 
     res.json({
       success: true,
@@ -467,7 +467,7 @@ export async function forceReconnect(req, res) {
     const userId = req.user.id;
     console.log('Usuario solicitando reconexión manual', { userId });
 
-    await whatsappService.forceReconnect();
+    await WhatsAppManager.forceReconnect();
 
     res.json({
       success: true,
@@ -492,7 +492,7 @@ export async function forceReconnect(req, res) {
 // Función para obtener estado de reconexión
 export function getReconnectionStatus(req, res) {
   try {
-    const status = whatsappService.getReconnectionStatus();
+    const status = WhatsAppManager.getReconnectionStatus();
 
     res.json({
       success: true,
@@ -534,7 +534,7 @@ export async function sendMessageWithImage(req, res) {
       });
     }
 
-    const result = await whatsappService.sendMessageWithImage({
+    const result = await WhatsAppManager.sendMessageWithImage({
       imageData,
       phone,
       caption: caption || 'Imagen enviada'
@@ -575,7 +575,7 @@ export async function sendMessageAccept(req, res) {
       });
     }
 
-    const result = await whatsappService.sendSimpleMessage({
+    const result = await WhatsAppManager.sendSimpleMessage({
       phone: telefono,
       message: comentario,
       type: 'accept',
@@ -617,7 +617,7 @@ export async function sendMessageReject(req, res) {
       });
     }
 
-    const result = await whatsappService.sendSimpleMessage({
+    const result = await WhatsAppManager.sendSimpleMessage({
       phone: telefono,
       message: comentario,
       type: 'reject',

@@ -7,7 +7,8 @@ import { Server } from 'socket.io';
 import messageRoutes from './routes/message.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import jwt from 'jsonwebtoken';
-import whatsappService, {startWhatsAppBot} from './services/whatsapp.service.js';
+import WhatsAppManager, { startWhatsAppBot } from './services/whatsappManager.js';
+
 import 'dotenv/config';
 import path from "path";
 import { fileURLToPath } from "url";
@@ -41,7 +42,6 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
-
 
 // Aumentando limite a 50mb
 app.use(express.json({
@@ -98,7 +98,7 @@ io.on('connection', (socket) => {
     socket.user = decoded;
 
     // Enviar estado inicial del QR
-    const qrStatus = whatsappService.getQRStatus();
+    const qrStatus = WhatsAppManager.getQRStatus();
     socket.emit('qr-status-update', qrStatus);
 
     console.log('Usuario autenticado:', decoded.username);
@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
 
   // Solicitar estado inicial
   socket.on('get-initial-status', () => {
-    const qrStatus = whatsappService.getQRStatus();
+    const qrStatus = WhatsAppManager.getQRStatus(); 
     socket.emit('qr-status-update', qrStatus);
   });
 
