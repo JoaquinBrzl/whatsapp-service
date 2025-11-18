@@ -1,16 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import logger from '../../utils/logger.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export async function getImageBase64(imgPath) {
     try {
         const baseUrl = process.env.BASE_URL;
-        if (imgPath.startsWith(`${baseUrl}/public/`)) {
+
+        if (imgPath.startsWith(`${baseUrl}/public/`)) {     // Caso 1: URL local que incluye BASE_URL
             const relativePath = imgPath.replace(`${baseUrl}/public/`, '');
             const fullPath = path.resolve(process.cwd(), 'src', 'public', relativePath);
             logger.info('Leyendo imagen localmente desde BASE_URL', { imgPath, fullPath, baseUrl });
             return await fs.promises.readFile(fullPath);
-        } else if (imgPath.startsWith("http")) {
+
+        } else if (imgPath.startsWith("http")) {            // Caso 2: URL externa HTTP
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
             const response = await fetch(imgPath, {
@@ -23,7 +27,7 @@ export async function getImageBase64(imgPath) {
             if (!response.ok) throw new Error(`HTTP ${response.status} al descargar ${imgPath}`);
             const arrayBuffer = await response.arrayBuffer();
             return Buffer.from(arrayBuffer);
-        } else {
+        } else {                                            // Caso 3: Ruta local relativa
             const fullPath = path.resolve(process.cwd(), 'src', 'public', imgPath);
             logger.info('Leyendo imagen localmente desde ruta relativa', { imgPath, fullPath });
             return await fs.promises.readFile(fullPath);

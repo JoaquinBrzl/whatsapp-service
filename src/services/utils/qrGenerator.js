@@ -1,11 +1,13 @@
 import QRCode from 'qrcode';
 import logger from '../../utils/logger.js';
 
+// Genera un QR optimizado según el formato solicitado (PNG, JPEG o SVG)
 export async function generateOptimalQR(qrString, format = 'PNG') {
     try {
         let qrImage;
         let qrConfig;
 
+        // Selecciona configuración según el tipo de formato
         switch (format.toUpperCase()) {
             case 'PNG':
                 qrConfig = {
@@ -36,6 +38,8 @@ export async function generateOptimalQR(qrString, format = 'PNG') {
                     errorCorrectionLevel: 'M'
                 };
                 break;
+
+            // Si el formato no existe, usa PNG por defecto
             default:
                 qrConfig = {
                     type: 'image/png',
@@ -46,9 +50,11 @@ export async function generateOptimalQR(qrString, format = 'PNG') {
                     errorCorrectionLevel: 'M'
                 };
         }
-
+        
+        // Genera el QR final con la configuración seleccionada
         qrImage = await QRCode.toDataURL(qrString, qrConfig);
 
+        // Devuelve la información del QR generado
         return {
             image: qrImage,
             format: format.toUpperCase(),
@@ -58,8 +64,11 @@ export async function generateOptimalQR(qrString, format = 'PNG') {
         };
 
     } catch (error) {
+        // Registra el error y genera un QR en formato PNG como respaldo
         logger.error('Error generating optimal QR', { error: error.message, format });
+
         try {
+            // Generación de QR de respaldo en caso de fallo
             const fallbackQR = await QRCode.toDataURL(qrString, {
                 type: 'image/png',
                 width: 256,
@@ -74,6 +83,7 @@ export async function generateOptimalQR(qrString, format = 'PNG') {
                 fallback: true
             };
         } catch (fallbackError) {
+            // Si incluso el QR de respaldo falla, lanza error crítico
             throw new Error(`Failed to generate QR in any format: ${error.message}`);
         }
     }
